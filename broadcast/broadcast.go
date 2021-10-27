@@ -4,7 +4,8 @@ type broadcastQueue chan<- interface{}
 type subscriberQueue <-chan interface{}
 
 type Broadcaster interface {
-	Subscribe() *Subscriber
+	Subscribe() *Subscription
+	Broadcast(msg interface{})
 	Close()
 }
 
@@ -12,16 +13,16 @@ type broadcaster struct {
 	subscribers map[int]broadcastQueue
 }
 
-type Subscriber struct {
+type Subscription struct {
 	id    int
 	queue subscriberQueue
 }
 
-func (s *Subscriber) ID() int {
+func (s *Subscription) ID() int {
 	return s.id
 }
 
-func (s *Subscriber) Queue() subscriberQueue {
+func (s *Subscription) Queue() subscriberQueue {
 	return s.queue
 }
 
@@ -31,13 +32,22 @@ func New() Broadcaster {
 	}
 }
 
-func (b *broadcaster) Subscribe() *Subscriber {
+func (b *broadcaster) Subscribe() *Subscription {
 	newSubscriberChan := make(chan interface{})
 	newId := len(b.subscribers)
 	b.subscribers[newId] = newSubscriberChan
-	return &Subscriber{
+	return &Subscription{
 		id:    newId,
 		queue: newSubscriberChan,
+	}
+}
+
+func (b *broadcaster) Broadcast(msg interface{}) {
+	if b.subscribers == nil || len(b.subscribers) == 0 {
+		return
+	}
+	for _, subscriber := range b.subscribers {
+		subscriber <- msg
 	}
 }
 

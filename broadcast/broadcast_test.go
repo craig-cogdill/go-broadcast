@@ -1,6 +1,7 @@
 package broadcast
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func Test_Subscriber(t *testing.T) {
 	t.Run("can query ID", func(t *testing.T) {
 		assert := assert.New(t)
 
-		testSubscriber := Subscriber{
+		testSubscriber := Subscription{
 			id:    testId,
 			queue: nil,
 		}
@@ -39,7 +40,7 @@ func Test_Subscriber(t *testing.T) {
 		assert := assert.New(t)
 
 		testChan := make(subscriberQueue)
-		testSubscriber := Subscriber{
+		testSubscriber := Subscription{
 			id:    testId,
 			queue: testChan,
 		}
@@ -84,7 +85,7 @@ func Test_Subscribe(t *testing.T) {
 }
 
 func Test_Close(t *testing.T) {
-	t.Run("subscribing creates new channel", func(t *testing.T) {
+	t.Run("closing nils out the subscriber queues - no entries", func(t *testing.T) {
 		assert := assert.New(t)
 
 		testBroadcaster := getDefaultBroadcaster()
@@ -95,4 +96,108 @@ func Test_Close(t *testing.T) {
 		assert.Nil(testBroadcaster.subscribers)
 	})
 
+	t.Run("closing nils out the subscriber queues - one entry", func(t *testing.T) {
+		assert := assert.New(t)
+
+		testBroadcaster := getDefaultBroadcaster()
+		assert.NotNil(testBroadcaster.subscribers)
+
+		_ = testBroadcaster.Subscribe()
+		assert.Len(testBroadcaster.subscribers, 1)
+
+		testBroadcaster.Close()
+		assert.Nil(testBroadcaster.subscribers)
+	})
+
+	t.Run("closing nils out the subscriber queues - many entries", func(t *testing.T) {
+		assert := assert.New(t)
+
+		numberOfSubscribers := 100
+
+		testBroadcaster := getDefaultBroadcaster()
+		assert.NotNil(testBroadcaster.subscribers)
+
+		for i := 0; i < numberOfSubscribers; i++ {
+			_ = testBroadcaster.Subscribe()
+		}
+		assert.Len(testBroadcaster.subscribers, numberOfSubscribers)
+
+		testBroadcaster.Close()
+		assert.Nil(testBroadcaster.subscribers)
+	})
+}
+
+func Test_Broadcast(t *testing.T) {
+	t.Run("does not panic when no subscribers", func(t *testing.T) {
+		assert := assert.New(t)
+
+		testBroadcaster := New()
+		defer testBroadcaster.Close()
+
+		assert.NotPanics(func() { testBroadcaster.Broadcast("don't panic!") })
+	})
+
+	t.Run("sends a message to one subscriber", func(t *testing.T) {
+		assert := assert.New(t)
+
+		const expectedMsg = "Hello World"
+
+		testBroadcaster := New()
+		defer testBroadcaster.Close()
+
+		var threadFinished sync.WaitGroup
+		threadFinished.Add(1)
+
+		var threadReady sync.WaitGroup
+		threadReady.Add(1)
+
+		var receivedMsg interface{}
+		go func() {
+			subscription := testBroadcaster.Subscribe()
+			threadReady.Done()
+			receivedMsg = <-subscription.Queue()
+			threadFinished.Done()
+		}()
+
+		threadReady.Wait()
+		testBroadcaster.Broadcast(expectedMsg)
+		threadFinished.Wait()
+
+		assert.Equal(expectedMsg, receivedMsg.(string))
+	})
+
+	t.Run("sends a message to many subscribers", func(t *testing.T) {
+		assert := assert.New(t)
+
+		const expectedMsg = "Hello World"
+		const numberOfSubscribers = 10
+
+		testBroadcaster := New()
+		defer testBroadcaster.Close()
+
+		var threadsFinished sync.WaitGroup
+		threadsFinished.Add(numberOfSubscribers)
+
+		var threadsReady sync.WaitGroup
+		threadsReady.Add(numberOfSubscribers)
+
+		receivedMsgs := make(map[int]interface{})
+		for i := 0; i < numberOfSubscribers; i++ {
+			go func() {
+				subscription := testBroadcaster.Subscribe()
+				threadsReady.Done()
+				receivedMsgs[subscription.ID()] = <-subscription.Queue()
+				threadsFinished.Done()
+			}()
+		}
+
+		threadsReady.Wait()
+		testBroadcaster.Broadcast(expectedMsg)
+		threadsFinished.Wait()
+
+		assert.Equal(numberOfSubscribers, len(receivedMsgs))
+		for _, msg := range receivedMsgs {
+			assert.Equal(expectedMsg, msg.(string))
+		}
+	})
 }
