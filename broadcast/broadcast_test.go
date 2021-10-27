@@ -181,12 +181,14 @@ func Test_Broadcast(t *testing.T) {
 		var threadsReady sync.WaitGroup
 		threadsReady.Add(numberOfSubscribers)
 
-		receivedMsgs := make(map[int]interface{})
+		// normal maps are not thread-safe
+		var receivedMsgs sync.Map
 		for i := 0; i < numberOfSubscribers; i++ {
 			go func() {
 				subscription := testBroadcaster.Subscribe()
 				threadsReady.Done()
-				receivedMsgs[subscription.ID()] = <-subscription.Queue()
+				msg := <-subscription.Queue()
+				receivedMsgs.Store(subscription.ID(), msg)
 				threadsFinished.Done()
 			}()
 		}
@@ -195,9 +197,16 @@ func Test_Broadcast(t *testing.T) {
 		testBroadcaster.Broadcast(expectedMsg)
 		threadsFinished.Wait()
 
-		assert.Equal(numberOfSubscribers, len(receivedMsgs))
-		for _, msg := range receivedMsgs {
-			assert.Equal(expectedMsg, msg.(string))
-		}
+		receivedMsgsCount := 0
+		allSuccess := false
+		receivedMsgs.Range(func(key, value interface{}) bool {
+			receivedMsgsCount += 1
+			messageMatchesExpected := value.(string) == expectedMsg
+			allSuccess = allSuccess || messageMatchesExpected
+			return messageMatchesExpected
+		})
+
+		assert.True(allSuccess)
+		assert.Equal(numberOfSubscribers, receivedMsgsCount)
 	})
 }
