@@ -1,5 +1,7 @@
 package broadcast
 
+import "sync"
+
 type broadcastQueue chan<- interface{}
 type subscriberQueue <-chan interface{}
 
@@ -10,6 +12,7 @@ type Broadcaster interface {
 }
 
 type broadcaster struct {
+	m           sync.Mutex
 	subscribers map[int]broadcastQueue
 }
 
@@ -46,6 +49,8 @@ func (b *broadcaster) Broadcast(msg interface{}) {
 	if b.subscribers == nil || len(b.subscribers) == 0 {
 		return
 	}
+	b.m.Lock()
+	defer b.m.Unlock()
 	for _, subscriber := range b.subscribers {
 		subscriber <- msg
 	}
