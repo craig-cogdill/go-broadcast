@@ -6,6 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Need to initialize the map, as using the New() constructor
+//	would not allow access to 'subscribers' member data
+func getDefaultBroadcaster() *broadcaster {
+	return &broadcaster{
+		subscribers: make(map[int]broadcastQueue),
+	}
+}
+
 func Test_Constructor(t *testing.T) {
 	t.Run("verify constructor returns proper type", func(t *testing.T) {
 		assert := assert.New(t)
@@ -39,15 +47,7 @@ func Test_Subscriber(t *testing.T) {
 	})
 }
 
-func Test_AddSubscriber(t *testing.T) {
-
-	// Need to initialize the map, as using the New() constructor
-	//	would not allow access to 'subscribers' member data
-	getDefaultBroadcaster := func() *broadcaster {
-		return &broadcaster{
-			subscribers: make(map[int]broadcastQueue),
-		}
-	}
+func Test_Subscribe(t *testing.T) {
 
 	t.Run("subscribing creates new channel", func(t *testing.T) {
 		assert := assert.New(t)
@@ -81,4 +81,18 @@ func Test_AddSubscriber(t *testing.T) {
 		secondSubscriber := testBroadcaster.Subscribe()
 		assert.Equal(1, secondSubscriber.ID())
 	})
+}
+
+func Test_Close(t *testing.T) {
+	t.Run("subscribing creates new channel", func(t *testing.T) {
+		assert := assert.New(t)
+
+		testBroadcaster := getDefaultBroadcaster()
+		assert.NotNil(testBroadcaster.subscribers)
+		assert.Len(testBroadcaster.subscribers, 0)
+
+		testBroadcaster.Close()
+		assert.Nil(testBroadcaster.subscribers)
+	})
+
 }

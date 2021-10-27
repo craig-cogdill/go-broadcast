@@ -29,8 +29,6 @@ func New() Broadcaster {
 	return &broadcaster{
 		subscribers: make(map[int]broadcastQueue),
 	}
-	// braod.subscribers := make(map[int]broadcastQueue)
-
 }
 
 func (b *broadcaster) Subscribe() *Subscriber {
@@ -44,5 +42,8 @@ func (b *broadcaster) Subscribe() *Subscriber {
 }
 
 func (b *broadcaster) Close() {
-	// clean up channels
+	for _, channel := range b.subscribers {
+		close(channel)
+	}
+	b.subscribers = nil
 }
