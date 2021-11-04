@@ -6,9 +6,15 @@ type broadcastQueue chan<- interface{}
 type subscriberQueue <-chan interface{}
 
 type Broadcaster interface {
-	Subscribe() *Subscription
+	Subscribe() Subscription
 	Broadcast(msg interface{})
 	Close()
+}
+
+type Subscription interface {
+	ID() int
+	Queue() subscriberQueue
+	Unsubscribe()
 }
 
 type broadcaster struct {
@@ -16,17 +22,22 @@ type broadcaster struct {
 	subscribers map[int]broadcastQueue
 }
 
-type Subscription struct {
-	id    int
-	queue subscriberQueue
+type subscription struct {
+	id          int
+	queue       subscriberQueue
+	unsubscribe func(int)
 }
 
-func (s *Subscription) ID() int {
+func (s *subscription) ID() int {
 	return s.id
 }
 
-func (s *Subscription) Queue() subscriberQueue {
+func (s *subscription) Queue() subscriberQueue {
 	return s.queue
+}
+
+func (s *subscription) Unsubscribe() {
+	s.unsubscribe(s.id)
 }
 
 func New() Broadcaster {
@@ -35,13 +46,16 @@ func New() Broadcaster {
 	}
 }
 
-func (b *broadcaster) Subscribe() *Subscription {
+func (b *broadcaster) Subscribe() Subscription {
+	b.m.Lock()
+	defer b.m.Unlock()
 	newSubscriberChan := make(chan interface{})
 	newId := len(b.subscribers)
 	b.subscribers[newId] = newSubscriberChan
-	return &Subscription{
-		id:    newId,
-		queue: newSubscriberChan,
+	return &subscription{
+		id:          newId,
+		queue:       newSubscriberChan,
+		unsubscribe: b.unsubscribe,
 	}
 }
 
@@ -63,7 +77,7 @@ func (b *broadcaster) Close() {
 	b.subscribers = nil
 }
 
-func (b *broadcaster) Unsubscribe(id int) {
+func (b *broadcaster) unsubscribe(id int) {
 	b.m.Lock()
 	defer b.m.Unlock()
 	channel, ok := b.subscribers[id]
