@@ -29,7 +29,7 @@ func Test_Subscriber(t *testing.T) {
 	t.Run("can query ID", func(t *testing.T) {
 		assert := assert.New(t)
 
-		testSubscriber := Subscription{
+		testSubscriber := subscription{
 			id:    testId,
 			queue: nil,
 		}
@@ -40,7 +40,7 @@ func Test_Subscriber(t *testing.T) {
 		assert := assert.New(t)
 
 		testChan := make(subscriberQueue)
-		testSubscriber := Subscription{
+		testSubscriber := subscription{
 			id:    testId,
 			queue: testChan,
 		}
@@ -223,7 +223,7 @@ func Test_Unsubscribe(t *testing.T) {
 		testBroadcaster.subscribers[testId] = testChannel
 		testBroadcaster.m.Unlock()
 
-		testBroadcaster.Unsubscribe(testId)
+		testBroadcaster.unsubscribe(testId)
 		assert.Empty(testBroadcaster.subscribers)
 	})
 
@@ -243,7 +243,7 @@ func Test_Unsubscribe(t *testing.T) {
 		testBroadcaster.m.Unlock()
 		assert.Equal(2, len(testBroadcaster.subscribers))
 
-		testBroadcaster.Unsubscribe(testId1)
+		testBroadcaster.unsubscribe(testId1)
 		assert.Equal(1, len(testBroadcaster.subscribers))
 		_, ok := testBroadcaster.subscribers[testId2]
 		assert.True(ok)
