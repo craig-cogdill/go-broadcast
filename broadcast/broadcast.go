@@ -64,10 +64,10 @@ func (b *broadcaster) Close() {
 }
 
 func (b *broadcaster) Unsubscribe(id int) {
+	b.m.Lock()
+	defer b.m.Unlock()
 	channel, ok := b.subscribers[id]
 	if ok {
-		b.m.Lock()
-		defer b.m.Unlock()
 		close(channel)
 		delete(b.subscribers, id)
 	}
