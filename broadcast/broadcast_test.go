@@ -49,7 +49,6 @@ func Test_Subscriber(t *testing.T) {
 }
 
 func Test_Subscribe(t *testing.T) {
-
 	t.Run("subscribing creates new channel", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -209,4 +208,45 @@ func Test_Broadcast(t *testing.T) {
 		assert.True(allSuccess)
 		assert.Equal(numberOfSubscribers, receivedMsgsCount)
 	})
+}
+
+func Test_Unsubscribe(t *testing.T) {
+	t.Run("unsubscribing closes a channel", func(t *testing.T) {
+		assert := assert.New(t)
+
+		testBroadcaster := getDefaultBroadcaster()
+		assert.Empty(testBroadcaster.subscribers)
+
+		testId := 2112
+		testChannel := make(chan interface{})
+		testBroadcaster.m.Lock()
+		testBroadcaster.subscribers[testId] = testChannel
+		testBroadcaster.m.Unlock()
+
+		testBroadcaster.Unsubscribe(testId)
+		assert.Empty(testBroadcaster.subscribers)
+	})
+
+	t.Run("unsubscribing leaves other subscriptions untouched", func(t *testing.T) {
+		assert := assert.New(t)
+
+		testBroadcaster := getDefaultBroadcaster()
+		assert.Empty(testBroadcaster.subscribers)
+
+		testId1 := 1
+		testId2 := 2
+		testChannel1 := make(chan interface{})
+		testChannel2 := make(chan interface{})
+		testBroadcaster.m.Lock()
+		testBroadcaster.subscribers[testId1] = testChannel1
+		testBroadcaster.subscribers[testId2] = testChannel2
+		testBroadcaster.m.Unlock()
+		assert.Equal(2, len(testBroadcaster.subscribers))
+
+		testBroadcaster.Unsubscribe(testId1)
+		assert.Equal(1, len(testBroadcaster.subscribers))
+		_, ok := testBroadcaster.subscribers[testId2]
+		assert.True(ok)
+	})
+
 }

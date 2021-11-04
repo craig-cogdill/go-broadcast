@@ -46,11 +46,11 @@ func (b *broadcaster) Subscribe() *Subscription {
 }
 
 func (b *broadcaster) Broadcast(msg interface{}) {
+	b.m.Lock()
+	defer b.m.Unlock()
 	if b.subscribers == nil || len(b.subscribers) == 0 {
 		return
 	}
-	b.m.Lock()
-	defer b.m.Unlock()
 	for _, subscriber := range b.subscribers {
 		subscriber <- msg
 	}
@@ -61,4 +61,14 @@ func (b *broadcaster) Close() {
 		close(channel)
 	}
 	b.subscribers = nil
+}
+
+func (b *broadcaster) Unsubscribe(id int) {
+	b.m.Lock()
+	defer b.m.Unlock()
+	channel, ok := b.subscribers[id]
+	if ok {
+		close(channel)
+		delete(b.subscribers, id)
+	}
 }
