@@ -1,4 +1,5 @@
 EXECUTABLE := server
+COVERAGE_REPORT := coverage.out
 
 default:
 	go build -o $(EXECUTABLE) main.go
@@ -9,5 +10,9 @@ test:
 coverage:
 	go test -v -cover ./...
 
+coverage-html:
+	go test -v -coverprofile=$(COVERAGE_REPORT) ./...
+	go tool cover -html=$(COVERAGE_REPORT)
+
 clean:
-	rm $(EXECUTABLE)
+	rm $(EXECUTABLE) $(COVERAGE_REPORT)

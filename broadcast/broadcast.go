@@ -26,6 +26,7 @@ type subscription struct {
 	id          int
 	queue       subscriberQueue
 	unsubscribe func(int)
+	once        sync.Once
 }
 
 func (s *subscription) ID() int {
@@ -37,7 +38,9 @@ func (s *subscription) Queue() subscriberQueue {
 }
 
 func (s *subscription) Unsubscribe() {
-	s.unsubscribe(s.id)
+	s.once.Do(func() {
+		s.unsubscribe(s.id)
+	})
 }
 
 func New() Broadcaster {
