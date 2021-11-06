@@ -1,7 +1,5 @@
 # go-broadcast
 
-A very basic broadcast / subscription library for handling one-to-many queueing in Golang.
-
 ### Example usage
 ```
 // main.go
