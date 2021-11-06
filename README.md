@@ -26,3 +26,8 @@ make test
 ```
 make coverage
 ```
+
+Interactive hotspot coverage report:
+```
+make coverage-html
+```
