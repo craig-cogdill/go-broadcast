@@ -20,12 +20,14 @@ type Subscription interface {
 type broadcaster struct {
 	m           sync.Mutex
 	subscribers map[int]broadcastQueue
+	singleClose sync.Once
 }
 
 type subscription struct {
-	id          int
-	queue       subscriberQueue
-	unsubscribe func(int)
+	id                int
+	queue             subscriberQueue
+	unsubscribe       func(int)
+	singleUnsubscribe sync.Once
 }
 
 func (s *subscription) ID() int {
@@ -37,7 +39,9 @@ func (s *subscription) Queue() subscriberQueue {
 }
 
 func (s *subscription) Unsubscribe() {
-	s.unsubscribe(s.id)
+	s.singleUnsubscribe.Do(func() {
+		s.unsubscribe(s.id)
+	})
 }
 
 func New() Broadcaster {
@@ -71,10 +75,14 @@ func (b *broadcaster) Broadcast(msg interface{}) {
 }
 
 func (b *broadcaster) Close() {
-	for _, channel := range b.subscribers {
-		close(channel)
-	}
-	b.subscribers = nil
+	b.singleClose.Do(func() {
+		b.m.Lock()
+		defer b.m.Unlock()
+		for _, channel := range b.subscribers {
+			close(channel)
+		}
+		b.subscribers = nil
+	})
 }
 
 func (b *broadcaster) unsubscribe(id int) {

@@ -249,4 +249,34 @@ func Test_Unsubscribe(t *testing.T) {
 		assert.True(ok)
 	})
 
+	t.Run("unsubscribing from Subscription behaves as expected", func(t *testing.T) {
+		assert := assert.New(t)
+
+		testBroadcaster := getDefaultBroadcaster()
+		assert.Empty(testBroadcaster.subscribers)
+
+		subscription := testBroadcaster.Subscribe()
+		assert.NotEmpty(1, len(testBroadcaster.subscribers))
+		assert.Equal(1, len(testBroadcaster.subscribers))
+		subscription.Unsubscribe()
+
+		assert.Empty(testBroadcaster.subscribers)
+	})
+
+	t.Run("unsubscribing from Subscription multiple times has no additional effect", func(t *testing.T) {
+		assert := assert.New(t)
+
+		testBroadcaster := getDefaultBroadcaster()
+		assert.Empty(testBroadcaster.subscribers)
+
+		subscription := testBroadcaster.Subscribe()
+		assert.NotEmpty(1, len(testBroadcaster.subscribers))
+		assert.Equal(1, len(testBroadcaster.subscribers))
+		subscription.Unsubscribe()
+		assert.Empty(testBroadcaster.subscribers)
+
+		subscription.Unsubscribe()
+		assert.Empty(testBroadcaster.subscribers)
+	})
+
 }
